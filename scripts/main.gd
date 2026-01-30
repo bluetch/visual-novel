@@ -34,6 +34,8 @@ const GameStateDataScript = preload("res://scripts/game_state.gd")
 var _current_node_id: String = ""   # 當前劇情節點 ID，例如 "start"、"dog-route-1"
 var _current_node: Dictionary = {}  # 當前節點的全部內容（對話、選項等）
 var _current_dialogue_index: int = 0  # 現在顯示到第幾句對話（從 0 開始數）
+var _narration_pending: bool = false
+var _default_dialog_text_modulate: Color = Color(1,1,1,1)
 
 # -----------------------------------------------------------------------------
 # 常數：圖片路徑的「模板」
@@ -71,6 +73,9 @@ func _ready() -> void:
 	# 先隱藏結局畫面，再從劇情起點開始
 	_hide_ending_overlay()
 	_goto_node(Story.START_NODE)
+
+	# 儲存對話文字預設顏色（之後可還原）
+	_default_dialog_text_modulate = $DialogBg/DialogText.modulate
 
 
 # =============================================================================
@@ -117,9 +122,24 @@ func _render_current_dialogue_line() -> void:
 		return
 	var idx: int = clampi(_current_dialogue_index - 1, 0, dialogues.size() - 1)
 	var d: Dictionary = dialogues[idx]
-	$DialogBg/CharacterName.text = game_state.pick(d.get("speaker", ""))
+	# 隱藏或顯示說話者名稱（旁白應隱藏 speaker）
+	var speaker_val = d.get("speaker", "")
+	var speaker_text = game_state.pick(speaker_val)
+	if d.get("narration", false) or speaker_text == "":
+		$DialogBg/CharacterName.visible = false
+	else:
+		$DialogBg/CharacterName.visible = true
+		$DialogBg/CharacterName.text = speaker_text
+
 	_set_character(d.get("character", ""))
+
+	# 文字與可選顏色覆寫（支援 hex，如 "#RRGGBB"）
 	$DialogBg/DialogText.text = game_state.pick(d.get("text", ""))
+	var color_hex: String = d.get("color", "")
+	if color_hex != "":
+		$DialogBg/DialogText.modulate = _color_from_hex(color_hex)
+	else:
+		$DialogBg/DialogText.modulate = _default_dialog_text_modulate
 
 
 # =============================================================================
@@ -197,6 +217,19 @@ func _goto_node(id: String) -> void:
 	_clear_options()
 	$DialogBg/OptionsContainer.visible = false
 	$DialogBg/NextBtn.visible = true
+
+	# 若節點有 node-level narration，先顯示旁白（隱藏 speaker），下一次按 Next 再開始 dialogues
+	if _current_node.has("narration"):
+		_narration_pending = true
+		$DialogBg/CharacterName.visible = false
+		$DialogBg/DialogText.text = game_state.pick(_current_node.get("narration", ""))
+		var narr_color: String = _current_node.get("narration_color", "")
+		if narr_color != "":
+			$DialogBg/DialogText.modulate = _color_from_hex(narr_color)
+		else:
+			$DialogBg/DialogText.modulate = _default_dialog_text_modulate
+		return
+
 	_advance_dialogue()
 
 
@@ -208,17 +241,41 @@ func _goto_node(id: String) -> void:
 func _advance_dialogue() -> void:
 	var dialogues: Array = _current_node.get("dialogues", [])
 
-	# 已經沒有下一句了 → 顯示選項，並 return
+	# 如果剛剛顯示過 node-level narration，下一次按 Next 要開始 dialogues
+	if _narration_pending:
+		_narration_pending = false
+		# 還原對話文字顏色（若旁白改過顏色）
+		$DialogBg/DialogText.modulate = _default_dialog_text_modulate
+
+	# 已經沒有下一句了：若節點沒有定義 options 欄位，嘗試自動跳到 next
 	if _current_dialogue_index >= dialogues.size():
+		if not _current_node.has("options"):
+			var next_id: String = _current_node.get("next", "")
+			if next_id != "":
+				_goto_node(next_id)
+				return
 		_show_options(_current_node.get("options", []))
 		return
 
 	# 取當前這一句的資料（speaker=誰說的, text=內容, character=立繪檔名）
 	var d: Dictionary = dialogues[_current_dialogue_index]
-	$DialogBg/CharacterName.text = game_state.pick(d.get("speaker", ""))
+	# 隱藏或顯示說話者名稱（旁白應隱藏 speaker）
+	var speaker_val = d.get("speaker", "")
+	var speaker_text = game_state.pick(speaker_val)
+	if d.get("narration", false) or speaker_text == "":
+		$DialogBg/CharacterName.visible = false
+	else:
+		$DialogBg/CharacterName.visible = true
+		$DialogBg/CharacterName.text = speaker_text
+
 	_set_character(d.get("character", ""))
 	var msg: String = game_state.pick(d.get("text", ""))
 	$DialogBg/DialogText.text = msg
+	var color_hex: String = d.get("color", "")
+	if color_hex != "":
+		$DialogBg/DialogText.modulate = _color_from_hex(color_hex)
+	else:
+		$DialogBg/DialogText.modulate = _default_dialog_text_modulate
 
 	_current_dialogue_index += 1  # 下一句
 	$DialogBg/NextBtn.visible = true
@@ -247,6 +304,8 @@ func _show_options(opts: Array) -> void:
 	$DialogBg/NextBtn.visible = false
 	_clear_options()
 	if opts.is_empty():
+		# 還原對話文字顏色
+		$DialogBg/DialogText.modulate = _default_dialog_text_modulate
 		return
 
 	$DialogBg/OptionsContainer.visible = true
@@ -294,6 +353,9 @@ func _show_ending(node: Dictionary) -> void:
 		$EndingOverlay/ColorRect.color = Color(0.18, 0.08, 0.08, 0.94)
 		$EndingOverlay/CenterContainer/VBoxContainer/EndingTitle.add_theme_color_override("font_color", Color(0.95, 0.5, 0.5))
 
+	# 還原對話文字顏色，避免結局畫面後文字顏色異常
+	$DialogBg/DialogText.modulate = _default_dialog_text_modulate
+
 
 # -----------------------------------------------------------------------------
 # 更換背景圖
@@ -320,3 +382,18 @@ func _set_character(key: String) -> void:
 	if tex:
 		$CharacterSprite.texture = tex
 		$CharacterSprite.visible = true
+
+
+func _color_from_hex(hex:String) -> Color:
+	if hex == "":
+		return _default_dialog_text_modulate
+	var s := hex.strip_edges()
+	if s.begins_with("#"):
+		s = s.substr(1, s.length() - 1)
+	if s.length() == 6:
+		var r = int("0x" + s.substr(0,2))
+		var g = int("0x" + s.substr(2,2))
+		var b = int("0x" + s.substr(4,2))
+		return Color8(r, g, b)
+	# fallback
+	return _default_dialog_text_modulate

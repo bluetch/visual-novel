@@ -40,16 +40,22 @@ const STORY := {
 				"character": "girl-a-happy"
 			},
 			{
+				"narration": true,
+				"text": {"zh": "對面來了一個人...", "en": "A person is coming from the opposite direction..."},
+				"color": "#888888"
+			},
+			{
 				"speaker": {"zh": "你", "en": "You"},
 				"text": {"zh": "嗨，好久不見⋯⋯", "en": "Hey... long time no see."},
 				"character": "boy-a-normal"
 			}
 		],
-		"options": [
-			{"text": {"zh": "我來溜狗啦", "en": "I'm walking my dog."}, "next": "dog-route-1"},
-			{"text": {"zh": "對啊，最近心情不好，來散散心", "en": "Yeah. I've been feeling down, so I came out for a walk."}, "next": "feeling-route-1"},
-			{"text": {"zh": "對啊，我想說可能會遇見你", "en": "Yeah. I thought I might run into you."}, "next": "stalker-route-1"}
-		]
+		# "options": [
+		# 	{"text": {"zh": "我來溜狗啦", "en": "I'm walking my dog."}, "next": "dog-route-1"},
+		# 	{"text": {"zh": "對啊，最近心情不好，來散散心", "en": "Yeah. I've been feeling down, so I came out for a walk."}, "next": "feeling-route-1"},
+		# 	{"text": {"zh": "對啊，我想說可能會遇見你", "en": "Yeah. I thought I might run into you."}, "next": "stalker-route-1"}
+		# ]
+	"next": "dog-route-1",
 	},
 	# ---- 遛狗路線 ----
 	"dog-route-1": {

@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://janudd5ujhda"]
+[gd_scene load_steps=3 format=3 uid="uid://janudd5ujhda"]
 
 [ext_resource type="Script" uid="uid://c14p2qihb2pn8" path="res://scripts/start_menu.gd" id="1_1smd"]
+[ext_resource type="Texture2D" uid="uid://dctroqx7iduqs" path="res://assets/backgrounds/bus_index.jpg" id="2_thu50"]
 
 [node name="StartMenu" type="Control"]
 layout_mode = 3
@@ -10,6 +11,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_1smd")
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_thu50")
+expand_mode = 1
+stretch_mode = 6
+metadata/_edit_use_anchors_ = true
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
