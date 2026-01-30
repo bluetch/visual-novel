@@ -1,0 +1,15 @@
+[gd_resource type="Theme" load_steps=3 format=3 uid="uid://bv5m3beajk6qm"]
+
+[ext_resource type="FontFile" uid="uid://w42nyrxwrdfe" path="res://assets/fonts/jf-openhuninn-2.1.ttf" id="1_eiri8"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kyomd"]
+bg_color = Color(0.716471, 0.85341, 0.940693, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[resource]
+default_font = ExtResource("1_eiri8")
+default_font_size = 40
+Panel/styles/panel = SubResource("StyleBoxFlat_kyomd")

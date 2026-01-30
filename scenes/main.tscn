@@ -1,0 +1,167 @@
+[gd_scene load_steps=5 format=3 uid="uid://cqwbh55l8fseh"]
+
+[ext_resource type="Texture2D" uid="uid://l35yjqscvfcj" path="res://assets/backgrounds/a-park.png" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://nkyxwn4l5trr" path="res://scripts/main.gd" id="1_1bvp3"]
+[ext_resource type="Texture2D" uid="uid://bpcfunpe0ddja" path="res://assets/characters/girl-a-angry.png" id="2_h2yge"]
+[ext_resource type="Script" uid="uid://bgggwbt1fei3g" path="res://scripts/background.gd" id="3_lquwl"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_1bvp3")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_0xm2m")
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("3_lquwl")
+
+[node name="CharacterSprite" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -256.0
+offset_top = -591.0
+offset_right = 90.0
+grow_horizontal = 2
+grow_vertical = 0
+texture = ExtResource("2_h2yge")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DialogBg" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = -272.0
+offset_right = -30.0
+offset_bottom = -23.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="CharacterName" type="Label" parent="DialogBg"]
+layout_mode = 1
+offset_left = 25.0
+offset_top = 16.0
+offset_right = 265.0
+offset_bottom = 62.0
+text = "我的角色名稱"
+
+[node name="DialogText" type="Label" parent="DialogBg"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 23.0
+offset_top = 83.0
+offset_right = -25.0
+offset_bottom = -137.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 28
+autowrap_mode = 2
+
+[node name="NextBtn" type="Button" parent="DialogBg"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -54.0
+offset_right = -24.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 24
+text = "▶"
+
+[node name="OptionsContainer" type="VBoxContainer" parent="DialogBg"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -402.0
+offset_right = -24.0
+offset_bottom = -288.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="LangBtn" type="Button" parent="."]
+layout_mode = 1
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 140.0
+offset_bottom = 54.0
+theme_override_font_sizes/font_size = 20
+text = "中 / EN"
+
+[node name="EndingOverlay" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="ColorRect" type="ColorRect" parent="EndingOverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.1, 0.12, 0.92)
+
+[node name="CenterContainer" type="CenterContainer" parent="EndingOverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="EndingOverlay/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="EndingImage" type="TextureRect" parent="EndingOverlay/CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(400, 280)
+layout_mode = 2
+size_flags_horizontal = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="EndingTitle" type="Label" parent="EndingOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "結局標題"
+horizontal_alignment = 1
+
+[node name="EndingText" type="Label" parent="EndingOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "結局描述"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="RestartBtn" type="Button" parent="EndingOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "重新開始"
