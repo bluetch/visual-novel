@@ -36,6 +36,8 @@ var _current_node: Dictionary = {}  # 當前節點的全部內容（對話、選
 var _current_dialogue_index: int = 0  # 現在顯示到第幾句對話（從 0 開始數）
 var _narration_pending: bool = false
 var _default_dialog_text_modulate: Color = Color(1,1,1,1)
+var _typewriter_tween: Tween = null
+var _is_typing: bool = false # 用來記錄現在是否正在打字
 
 # -----------------------------------------------------------------------------
 # 常數：圖片路徑的「模板」
@@ -149,19 +151,19 @@ func _render_current_dialogue_line() -> void:
 # 這樣玩家點畫面任意處就可以下一句，不用一定要按按鈕。
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		# 轉成滑鼠事件型別，才能用 .button_index、.pressed 等
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			# 如果滑鼠是在「按鈕」上點擊（例如語言按鈕、選項按鈕、重新開始…），
-			# 就不要用「點畫面下一句」去干擾（避免點一次按鈕卻推進對話）。
 			var hovered := get_viewport().gui_get_hovered_control()
 			if hovered != null and hovered is BaseButton:
 				return
 
-			# 只有「對話進行中」才觸發：對話框顯示、下一句按鈕顯示、選項沒顯示
 			if $DialogBg.visible and $DialogBg/NextBtn.visible and not $DialogBg/OptionsContainer.visible:
-				_advance_dialogue()
-				# 告訴引擎「這個輸入我吃掉了」，避免再觸發其他東西
+				# --- 修改這裡 ---
+				if _is_typing:
+					_finish_typing() # 如果正在打字，點一下直接顯示全文
+				else:
+					_advance_dialogue() # 如果文字出完了，點一下才下一句
+				# ----------------
 				get_viewport().set_input_as_handled()
 
 
@@ -270,7 +272,7 @@ func _advance_dialogue() -> void:
 
 	_set_character(d.get("character", ""))
 	var msg: String = game_state.pick(d.get("text", ""))
-	$DialogBg/DialogText.text = msg
+	_start_typing(msg)
 	var color_hex: String = d.get("color", "")
 	if color_hex != "":
 		$DialogBg/DialogText.modulate = _color_from_hex(color_hex)
@@ -397,3 +399,38 @@ func _color_from_hex(hex:String) -> Color:
 		return Color8(r, g, b)
 	# fallback
 	return _default_dialog_text_modulate
+
+# -----------------------------------------------------------------------------
+# 核心打字機邏輯
+# -----------------------------------------------------------------------------
+func _start_typing(msg: String) -> void:
+	# 1. 停止上一個正在進行的打字動畫（如果有）
+	if _typewriter_tween:
+		_typewriter_tween.kill()
+	
+	# 2. 初始化文字與屬性
+	$DialogBg/DialogText.text = msg
+	$DialogBg/DialogText.visible_ratio = 0.0 # 先隱藏所有文字
+	_is_typing = true
+	
+	# 3. 建立新的 Tween
+	_typewriter_tween = create_tween()
+	
+	# 4. 計算打字速度：例如每字 0.05 秒，總時間 = 字數 * 0.05
+	# 你可以調整 0.05 這個數值，越小越快
+	var duration = msg.length() * 0.05
+	
+	# 5. 執行補間動畫：在 duration 秒內，將 visible_ratio 從 0 變到 1
+	_typewriter_tween.tween_property($DialogBg/DialogText, "visible_ratio", 1.0, duration)
+	
+	# 6. 動畫結束後的處理
+	_typewriter_tween.finished.connect(func(): _is_typing = false)
+
+# -----------------------------------------------------------------------------
+# 瞬間完成打字（玩家點擊時呼叫）
+# -----------------------------------------------------------------------------
+func _finish_typing() -> void:
+	if _typewriter_tween:
+		_typewriter_tween.kill()
+	$DialogBg/DialogText.visible_ratio = 1.0
+	_is_typing = false
