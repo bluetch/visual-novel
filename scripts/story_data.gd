@@ -1,12 +1,23 @@
 # =============================================================================
-# 劇情資料 (story_data.gd) - 《最後一班公車》完整版
+# 劇情資料 (story_data.gd)
 # =============================================================================
+# 這個檔案只負責「存劇情」，不負責顯示。main.gd 會來這裡查資料。
 
 extends RefCounted
-class_name StoryData
 
 # -----------------------------------------------------------------------------
 # STORY — 整個劇情的「地圖」
+# -----------------------------------------------------------------------------
+# 每個「節點」用一個 ID 當鍵，例如 "start"、"dog-route-1"。
+# 節點有兩大類：
+#   1. 一般節點：有 background、dialogues、options
+#   2. 結局節點：有 type: "ending"、ending_type: "good"/"bad"、title、text、image
+#
+# dialogues：陣列，每一句有 speaker（誰說的）、text（內容）、character（立繪檔名）。
+#   - speaker / text 這兩個欄位「可以是字串」，也可以是 {"zh": "...", "en": "..."} 這種雙語字典
+# options：陣列，每個選項有 text（按鈕文字）、next（按下後要跳的節點 ID）。
+#   - text 也可以是 {"zh": "...", "en": "..."} 這種雙語字典
+# background：背景圖檔名（不含 .png），對應 assets/backgrounds/ 裡的圖。
 # -----------------------------------------------------------------------------
 const STORY := {
 	
@@ -33,6 +44,8 @@ const STORY := {
 		"options": [
 			{"text": {"zh": "別無選擇，上車吧", "en": "No choice, get on the bus"}, "next": "bus-interior-start"}
 		]
+		,
+		"transition": {"enabled": true, "duration": 1.2, "color": "#000000"}
 	},
 
 	# ---- 01 進入車廂 ----
@@ -60,6 +73,7 @@ const STORY := {
 				"color": "#888888"
 			}
 		],
+		"transition": {"enabled": true, "duration": 1.2, "color": "#000000"},
 		"next": "station-1-student-intro"
 	},
 

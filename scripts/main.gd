@@ -13,6 +13,8 @@
 
 extends Control
 
+signal game_ready
+
 # -----------------------------------------------------------------------------
 # 載入劇情資料
 # -----------------------------------------------------------------------------
@@ -38,6 +40,13 @@ var _narration_pending: bool = false
 var _default_dialog_text_modulate: Color = Color(1,1,1,1)
 var _typewriter_tween: Tween = null
 var _is_typing: bool = false # 用來記錄現在是否正在打字
+var _transition_overlay: ColorRect = null
+
+# default minimal start transition duration (seconds)
+# 設為 0 表示允許傳入 0s (立即顯示)
+const _START_TRANS_MIN := 0.0
+# 可由外部場景設定的初始過場時間（可在 Inspector 調整或由 StartMenu 指定）
+@export var initial_fade_duration: float = _START_TRANS_MIN
 
 # -----------------------------------------------------------------------------
 # 常數：圖片路徑的「模板」
@@ -72,12 +81,18 @@ func _ready() -> void:
 	game_state.language_changed.connect(_on_language_changed)
 	_refresh_static_ui()
 
-	# 先隱藏結局畫面，再從劇情起點開始
+	# 先隱藏結局畫面
 	_hide_ending_overlay()
-	_goto_node(Story.START_NODE)
+
+	# 使用場景中已存在的 ColorRect 作為過場遮罩
+	_transition_overlay = $EndingOverlay/ColorRect
+	_transition_overlay.visible = false
 
 	# 儲存對話文字預設顏色（之後可還原）
 	_default_dialog_text_modulate = $DialogBg/DialogText.modulate
+
+	# 預設直接進入遊戲（若你有 Start 按鈕可取代為呼叫 start_game_with_transition）
+	start_game_with_transition(initial_fade_duration)
 
 
 # =============================================================================
@@ -205,34 +220,13 @@ func _goto_node(id: String) -> void:
 	if node.is_empty():
 		return  # 找不到就提早離開，不做事
 
-	_current_node_id = id
-	_current_node = node
-
-	# 結局節點：顯示結局畫面後直接 return，不再跑下面的對話邏輯
-	if Story.is_ending(node):
-		_show_ending(node)
+	# 若節點設定需要過場，交給過場流程處理；否則直接套用節點設定
+	var trans: Dictionary = node.get("transition", {}) as Dictionary
+	if trans != null and bool(trans.get("enabled", false)):
+		_run_transition_to_node(id, node)
 		return
 
-	# 一般對話節點：換背景、清選項、顯示下一句按鈕，然後跑第一句對話
-	_set_background(node.get("background", "a-park"))
-	_current_dialogue_index = 0
-	_clear_options()
-	$DialogBg/OptionsContainer.visible = false
-	$DialogBg/NextBtn.visible = true
-
-	# 若節點有 node-level narration，先顯示旁白（隱藏 speaker），下一次按 Next 再開始 dialogues
-	if _current_node.has("narration"):
-		_narration_pending = true
-		$DialogBg/CharacterName.visible = false
-		$DialogBg/DialogText.text = game_state.pick(_current_node.get("narration", ""))
-		var narr_color: String = _current_node.get("narration_color", "")
-		if narr_color != "":
-			$DialogBg/DialogText.modulate = _color_from_hex(narr_color)
-		else:
-			$DialogBg/DialogText.modulate = _default_dialog_text_modulate
-		return
-
-	_advance_dialogue()
+	_apply_node_settings(id, node)
 
 
 # =============================================================================
@@ -281,6 +275,108 @@ func _advance_dialogue() -> void:
 
 	_current_dialogue_index += 1  # 下一句
 	$DialogBg/NextBtn.visible = true
+
+
+func _create_transition_overlay() -> void:
+	# deprecated: dynamic overlay creation removed — use EndingOverlay/ColorRect
+	return
+
+
+func _apply_node_settings(id: String, node: Dictionary) -> void:
+	_current_node_id = id
+	_current_node = node
+
+	# 結局節點：顯示結局畫面後直接 return，不再跑下面的對話邏輯
+	if Story.is_ending(node):
+		_show_ending(node)
+		if id == Story.START_NODE:
+			emit_signal("game_ready")
+		return
+
+	# 一般對話節點：換背景、清選項、顯示下一句按鈕，然後跑第一句對話
+	_set_background(node.get("background", "a-park"))
+	_current_dialogue_index = 0
+	_clear_options()
+	$DialogBg/OptionsContainer.visible = false
+	$DialogBg/NextBtn.visible = true
+
+	# 若節點有 node-level narration，先顯示旁白（隱藏 speaker），下一次按 Next 再開始 dialogues
+	if _current_node.has("narration"):
+		_narration_pending = true
+		$DialogBg/CharacterName.visible = false
+		$DialogBg/DialogText.text = game_state.pick(_current_node.get("narration", ""))
+		var narr_color: String = _current_node.get("narration_color", "")
+		if narr_color != "":
+			$DialogBg/DialogText.modulate = _color_from_hex(narr_color)
+		else:
+			$DialogBg/DialogText.modulate = _default_dialog_text_modulate
+		if id == Story.START_NODE:
+			emit_signal("game_ready")
+		return
+
+	_advance_dialogue()
+
+	# 如果是從 start 進入，通知外部 main 已初始化完畢
+	if id == Story.START_NODE:
+		emit_signal("game_ready")
+
+
+func _run_transition_to_node(id: String, node: Dictionary) -> void:
+	# node.transition = {"enabled": true, "duration": 0.8, "color": "#000000"}
+	var trans: Dictionary = node.get("transition", {}) as Dictionary
+	var dur: float = 0.5
+	if trans == null:
+		_apply_node_settings(id, node)
+		return
+	dur = float(trans.get("duration", dur))
+	var enabled: bool = bool(trans.get("enabled", false))
+	if not enabled:
+		_apply_node_settings(id, node)
+		return
+
+	var color_hex: String = String(trans.get("color", "#000000"))
+	var col: Color = _color_from_hex(color_hex)
+	# 進場：從透明到不透明
+	_transition_overlay.visible = true
+	_transition_overlay.color = Color(col.r, col.g, col.b, 0.0)
+	var t = create_tween()
+	t.tween_property(_transition_overlay, "color", Color(col.r, col.g, col.b, 1.0), dur * 0.5)
+	await t.finished
+
+	# 在黑屏時套用節點內容（背景等）
+	_apply_node_settings(id, node)
+
+	# 出場：不透明到透明
+	var t2 = create_tween()
+	t2.tween_property(_transition_overlay, "color", Color(col.r, col.g, col.b, 0.0), dur * 0.5)
+	await t2.finished
+	_transition_overlay.visible = false
+
+	# 如果是從 start 進入，通知外部 main 已初始化完畢
+	if id == Story.START_NODE:
+		emit_signal("game_ready")
+
+
+func start_game_with_transition(duration: float = 1.0) -> void:
+	# 若 duration <= 0，直接跳過淡入效果，立即套用 start node
+	var dur = duration
+	if dur <= 0.0:
+		if not _transition_overlay:
+			_transition_overlay = $EndingOverlay/ColorRect
+		_transition_overlay.visible = false
+		_goto_node(Story.START_NODE)
+		return
+
+	# 正常淡入流程
+	if not _transition_overlay:
+		_transition_overlay = $EndingOverlay/ColorRect
+	_transition_overlay.visible = true
+	_transition_overlay.color = Color(0,0,0,1)
+	var t = create_tween()
+	t.tween_property(_transition_overlay, "color", Color(0,0,0,0), dur)
+	await t.finished
+	_transition_overlay.visible = false
+	_goto_node(Story.START_NODE)
 
 
 # 當玩家按下「下一句」按鈕時，Godot 會呼叫這個函式
@@ -364,10 +460,26 @@ func _show_ending(node: Dictionary) -> void:
 # -----------------------------------------------------------------------------
 # key 是檔名不含副檔名，例如 "a-park"、"a-drink-shop"。
 func _set_background(key: String) -> void:
-	var path: String = _BG_PATH % key
-	var tex: Texture2D = load(path) as Texture2D
-	if tex:
-		$Background.texture = tex
+	var try_keys := [key]
+	# 嘗試替代命名（- vs _）以增加容錯
+	if key.find("-") != -1:
+		try_keys.append(key.replace("-", "_"))
+	if key.find("_") != -1:
+		try_keys.append(key.replace("_", "-"))
+
+	var found: Texture2D = null
+	for k in try_keys:
+		var path: String = _BG_PATH % k
+		if ResourceLoader.exists(path):
+			found = load(path) as Texture2D
+			if found:
+				break
+
+	if not found:
+		push_warning("Background resource not found for key '%s' (tried: %s)" % [key, try_keys])
+		return
+
+	$Background.texture = found
 
 
 # -----------------------------------------------------------------------------
